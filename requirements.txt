@@ -1,5 +1,5 @@
 streamlit
-mediapipe==0.10.0
+mediapipe==0.10.14
 numpy
 pandas
 opencv-contrib-python-headless
