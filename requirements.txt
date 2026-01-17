@@ -1,6 +1,6 @@
-requests==3.8
+requests==3.12
 streamlit
-mediapipe==0.10.10
+mediapipe==0.10.31
 numpy
 pandas
 opencv-contrib-python-headless
