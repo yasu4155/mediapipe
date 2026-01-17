@@ -1,39 +1,44 @@
-import streamlit as st
 import cv2
 import mediapipe as mp
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_holistic = mp.solutions.holistic
-# Webカメラから入力
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
+# 1. モデルの設定 (MediaPipe Tasks)
+# 手のモデルファイル (hand_landmarker.task) をダウンロードしておく必要があります
+base_options = python.BaseOptions(model_asset_path='hand_landmarker.task')
+options = vision.HandLandmarkerOptions(
+    base_options=base_options,
+    num_hands=2,
+    running_mode=vision.RunningMode.VIDEO)
+detector = vision.HandLandmarker.create_from_options(options)
+
+# 2. カメラ映像の取得
 cap = cv2.VideoCapture(0)
-with mp_holistic.Holistic(
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5) as holistic:
-  while cap.isOpened():
-    success, image = cap.read()
+
+while cap.isOpened():
+    success, frame = cap.read()
     if not success:
-      print("Ignoring empty camera frame.")
-      continue
-    image.flags.writeable = False
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = holistic.process(image)
-    # 検出されたHolisticのランドマークをカメラ画像に重ねて描画
-    image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    mp_drawing.draw_landmarks(
-        image,
-        results.face_landmarks,
-        mp_holistic.FACEMESH_CONTOURS,
-        landmark_drawing_spec=None,
-        connection_drawing_spec=mp_drawing_styles
-        .get_default_face_mesh_contours_style())
-    mp_drawing.draw_landmarks(
-        image,
-        results.pose_landmarks,
-        mp_holistic.POSE_CONNECTIONS,
-        landmark_drawing_spec=mp_drawing_styles
-        .get_default_pose_landmarks_style())
-    cv2.imshow('MediaPipe Holistic', cv2.flip(image, 1))
-    if cv2.waitKey(5) & 0xFF == 27:
-      break
+        break
+
+    # 3. 画像の処理
+    # MediaPipeはRGB形式を使用するため、BGRをRGBに変換
+    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    
+    # 4. 手の検出
+    results = detector.detect_for_video(mp_image, int(cap.get(cv2.CAP_PROP_POS_MSEC)))
+
+    # 5. 結果の可視化
+    if results.hand_landmarks:
+        for hand_landmarks in results.hand_landmarks:
+            for landmark in hand_landmarks:
+                # 座標は正規化されているため、画面サイズを掛ける
+                x = int(landmark.x * frame.shape[1])
+                y = int(landmark.y * frame.shape[0])
+                cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
+
+    cv2.imshow('MediaPipe Hand Landmarker', frame)
+    if cv2.waitKey(1) & 0xFF == 27: # ESCで終了
+        break
+
 cap.release()
+cv2.destroyAllWindows()
