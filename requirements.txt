@@ -1,4 +1,4 @@
-requests==3.12
+requests==3.13
 streamlit
 mediapipe==0.10.14
 numpy
